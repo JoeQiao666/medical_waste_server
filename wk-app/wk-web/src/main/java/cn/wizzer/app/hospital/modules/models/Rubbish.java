@@ -127,6 +127,10 @@ public class Rubbish extends BaseModel implements Serializable {
         this.departmentId = departmentId;
     }
 
+    public String getDepartmentId() {
+        return departmentId;
+    }
+
     public String getRecyclerId() {
         return recyclerId;
     }

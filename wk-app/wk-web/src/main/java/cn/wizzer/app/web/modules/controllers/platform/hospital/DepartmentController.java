@@ -38,8 +38,7 @@ public class DepartmentController{
     @Ok("json:full")
     @RequiresAuthentication
     public Object data(@Param("length") int length, @Param("start") int start, @Param("draw") int draw, @Param("::order") List<DataTableOrder> order, @Param("::columns") List<DataTableColumn> columns) {
-		Cnd cnd = Cnd.NEW();
-    	return departmentService.data(length, start, draw, order, columns, cnd, null);
+    	return departmentService.data(length, start, draw, order, columns, Cnd.where("delFlag","=",0), null);
     }
     @At
     @Ok("json:full")

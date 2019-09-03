@@ -99,6 +99,11 @@ public class Sys_user extends BaseModel implements Serializable {
     @Comment("卡id")
     @ColDefine(type = ColType.VARCHAR, width = 32)
     private String cardId;
+
+    @Column
+    @Comment("岗位id")
+    @ColDefine(type = ColType.VARCHAR, width = 32)
+    private String positionId;
     @Column
     private boolean loginSidebar;
 

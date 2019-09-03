@@ -104,7 +104,31 @@ public class RubbishController {
     @GET
     @RequiresAuthentication
     public Object weightPerDayInLastMonth(@Param("isBottle") boolean isBottle) {
-        Sql sql=Sqls.create("select * from last_month_weight_per_day where isBottle="+(isBottle?1:0)).setCallback(Sqls.callback.maps());
+        Sql sql=Sqls.create("SELECT\n" +
+                "\tcast(\n" +
+                "\t\tsum(`rubbish`.`weight`) AS DECIMAL (10, 2)\n" +
+                "\t) AS `weight`,\n" +
+                "\tdate_format(\n" +
+                "\t\tfrom_unixtime(`rubbish`.`opAt`),\n" +
+                "\t\t'%Y-%m-%d'\n" +
+                "\t) AS `date`\n" +
+                "FROM\n" +
+                "\t`rubbish`\n" +
+                "WHERE\n" +
+                "\t(\n" +
+                "\t\t(\n" +
+                "\t\t\tto_days(now()) - to_days(\n" +
+                "\t\t\t\tfrom_unixtime(`rubbish`.`opAt`)\n" +
+                "\t\t\t)\n" +
+                "\t\t) <= 30\n" +
+                "\tand  isBottle="+(isBottle?1:0)+
+                ")\tGROUP BY\n" +
+                "\tdate_format(\n" +
+                "\t\tfrom_unixtime(`rubbish`.`opAt`),\n" +
+                "\t\t'%Y-%m-%d'\n" +
+                "\t)\n" +
+                "ORDER BY\n" +
+                "\t`date` DESC").setCallback(Sqls.callback.maps());
         rubbishService.dao().execute(sql);
         return sql.getList(NutMap.class);
     }
@@ -153,7 +177,7 @@ public class RubbishController {
     @Ok("json:full")
     @GET
     @RequiresAuthentication
-    public Object weightPerDayByDepartment(@Param("start")String start,@Param("end")String end,@Param("name")String name,@Param("isBottle")boolean isBottle,@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize,@Param("status")int status){
+    public Object weightPerDayByDepartment(@Param("start")String start,@Param("end")String end,@Param("name")String name,@Param("isBottle")boolean isBottle,@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize,@Param("status")String status){
         StringBuilder stringBuilder;
         stringBuilder = new StringBuilder();
         stringBuilder.append("SELECT\n" +
@@ -205,6 +229,7 @@ public class RubbishController {
         else return Result.error("日期不正确");
         stringBuilder.append(" and department.name like '%").append(name == null ? "" : name).append("%'");
         stringBuilder.append(" and `nutzwk`.`rubbish`.`isBottle`=").append(isBottle ? 1 : 0);
+        if(status!=null)
         stringBuilder.append(" and status=").append(status);
         stringBuilder.append("\t\tGROUP BY\n" +
                 "\t\t\t`nutzwk`.`rubbish`.`departmentId`,\n" +
@@ -466,6 +491,7 @@ public class RubbishController {
             for (String id :ids){
                 Rubbish rubbish=rubbishService.fetch(id);
                 rubbish.setStatus(1);
+                rubbish.setStoreAt((int)(System.currentTimeMillis()/1000));
                 rubbishService.updateIgnoreNull(rubbish);
             }
             return Result.success("system.success");

@@ -104,7 +104,6 @@ public class SysUserController {
             user.setLoginPjax(true);
             user.setLoginCount(0);
             user.setLoginAt(0);
-            user.setOpAt((int)System.currentTimeMillis()/1000);
             user = userService.insert(user);
             if(user.getRoleId()!=null) roleService.insert("sys_user_role", Chain.make("roleId", user.getRoleId()).add("userId",user.getId()));
             return Result.success("system.success");

@@ -88,15 +88,17 @@ public class LoginController {
     @Filters(@By(type = TokenFilter.class))
     @AdaptBy(type = JsonAdaptor.class)
     public Object addRubbish(@Param("..") List<Rubbish> rubbishes, HttpServletRequest req) {
-
-            for (Rubbish rubbish : rubbishes) {
-                String staffId = rubbish.getStaffId();
-                Sys_user user;
-                if (staffId.length() == 8) {
-                    user = userService.fetch(Cnd.where("cardId", "=", staffId));
-                    rubbish.setStaffId(user.getId());
-                } else user = userService.fetch(staffId);
-                rubbish.setDepartmentId(user.getDepartmentId());
+        int i = 0;
+        for (Rubbish rubbish : rubbishes) {
+            String staffId = rubbish.getStaffId();
+            Sys_user user;
+            if(staffId==null)continue;
+            if (staffId.length() == 8) {
+                user = userService.fetch(Cnd.where("cardId", "=", staffId));
+                rubbish.setStaffId(user.getId());
+            } else user = userService.fetch(staffId);
+            if(user==null)continue;
+            if (rubbish.getDepartmentId().equals(user.getDepartmentId())) {
                 rubbish.setStatus(0);
                 rubbish.setOperatorId(null);
                 rubbish.setRecyclerId(Strings.sNull(req.getAttribute("userId")));
@@ -105,8 +107,11 @@ public class LoginController {
                 rubbish.setRecycleAt(null);
                 rubbish.setDelFlag(false);
                 rubbishService.insert(rubbish);
+                i++;
             }
-            return Result.success("system.success");
+        }
+        if(i==0)return Result.error(i+"确认人科室不正确");
+        return Result.success(i + "件上传");
 
     }
 
@@ -146,7 +151,7 @@ public class LoginController {
     @GET
     @Filters(@By(type = TokenFilter.class))
     public Object getOneRubbish(@Param("id") String id, HttpServletRequest req) {
-        Sql sql = Sqls.create("select * from rubbish_with_name where id='" + id + "'and recyclerId='" + Strings.sNull(req.getAttribute("userId") + "'"));
+        Sql sql = Sqls.create("select * from rubbish_with_name where id='" + id + "'");
         sql.setCallback(Sqls.callback.maps());
         rubbishService.dao().execute(sql);
         return Result.success("获取成功", sql.getList(NutMap.class).get(0));
@@ -165,12 +170,11 @@ public class LoginController {
                 if (administratorId == null) continue;
                 rubbish.setStatus(1);
                 rubbish.setStoreAt((int) (System.currentTimeMillis() / 1000));
-                if(administratorId.length()==8)
-                {Sys_user user=userService.fetch(Cnd.where("cardId", "=",administratorId));
+                if (administratorId.length() == 8) {
+                    Sys_user user = userService.fetch(Cnd.where("cardId", "=", administratorId));
                     rubbish.setAdministratorId(user.getId());
-                }
-               else
-                rubbish.setAdministratorId(administratorId);
+                } else
+                    rubbish.setAdministratorId(administratorId);
                 rubbishService.update(rubbish);
                 i++;
             }
@@ -180,15 +184,17 @@ public class LoginController {
         double percent = (double) sql.getList(NutMap.class).get(0).get("percent");
         Alert alert = alertService.query().get(0);
         try {
-        JPushClient jpushClient = new JPushClient("f5f636633ed555ae30ebf910", "13fc8b32c7627efe5a351bfb", null, ClientConfig.getInstance());
-        if (percent > alert.getPercent()) {
-            PushResult result = jpushClient.sendPush(PushPayload.newBuilder()
-                    .setPlatform(Platform.android())
-                    .setAudience(Audience.all())
-                    .setNotification(Notification.android("您的医疗废品已超过" + alert.getPercent() + "%未处理，请及时处理", "异常信息", null))
-                    .build());
-        }
-        return Result.success(i + "件入库");} catch (Exception e) {
+            JPushClient jpushClient = new JPushClient("f5f636633ed555ae30ebf910", "13fc8b32c7627efe5a351bfb", null, ClientConfig.getInstance());
+            if (percent > alert.getPercent()) {
+                PushResult result = jpushClient.sendPush(PushPayload.newBuilder()
+                        .setPlatform(Platform.android())
+                        .setAudience(Audience.all())
+                        .setNotification(Notification.android("您的医疗废品已超过" + alert.getPercent() + "%未处理，请及时处理", "异常信息", null))
+                        .build());
+            }
+            if(i==0)return Result.error(i+"件入库");
+            return Result.success(i + "件入库");
+        } catch (Exception e) {
             if (e instanceof APIRequestException)
                 return Result.success("system.success");
             return Result.error("system.error");
@@ -206,17 +212,21 @@ public class LoginController {
             if (rubbish != null) {
                 if (!rubbish.getRecyclerId().equals(Strings.sNull(req.getAttribute("userId")))) continue;
                 if (companyId == null) continue;
-                if(companyId.length()==8){
-                    Company company=companyService.fetch(Cnd.where("cardId", "=",companyId));
+                if (companyId.length() == 8) {
+                    Company company = companyService.fetch(Cnd.where("cardNumber", "=", companyId));
+                    if(company==null)continue;
                     rubbish.setCompanyId(company.getId());
-                }
-                else rubbish.setCompanyId(companyId);
+                } else {
+                    Company company = companyService.fetch(companyId);
+                    if(company==null)continue;
+                    rubbish.setCompanyId(companyId);}
                 rubbish.setStatus(2);
                 rubbish.setRecycleAt((int) (System.currentTimeMillis() / 1000));
                 rubbishService.update(rubbish);
                 i++;
             }
         }
+        if(i==0)return Result.error(i+"件出库");
         return Result.success(i + "件出库");
     }
 

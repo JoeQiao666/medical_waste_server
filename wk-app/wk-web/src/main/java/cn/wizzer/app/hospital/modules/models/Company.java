@@ -58,10 +58,6 @@ public class Company extends BaseModel implements Serializable {
     @Comment("县")
     @ColDefine(type = ColType.VARCHAR, width = 32)
     private String county;
-    @Column
-    @Comment("卡id")
-    @ColDefine(type = ColType.VARCHAR, width = 32)
-    private String cardId;
 
     public String getId() {
         return id;

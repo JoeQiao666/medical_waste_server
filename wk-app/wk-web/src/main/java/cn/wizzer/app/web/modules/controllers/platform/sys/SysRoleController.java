@@ -330,7 +330,7 @@ public class SysRoleController {
         Cnd cnd = Cnd.NEW();
 //        if (!Strings.isBlank(unitid) && !"root".equals(unitid))
 //            cnd.and("unitid", "=", unitid);
-        return roleService.data(length, start, draw, order, columns, cnd, null);
+        return Result.success("获取成功",roleService.query());
     }
 
     @At

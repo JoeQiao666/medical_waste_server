@@ -40,7 +40,7 @@ public class PositionController{
     @RequiresAuthentication
     public Object data(@Param("length") int length, @Param("start") int start, @Param("draw") int draw, @Param("::order") List<DataTableOrder> order, @Param("::columns") List<DataTableColumn> columns) {
 		Cnd cnd = Cnd.NEW();
-    	return positionService.data(length, start, draw, order, columns, cnd, null);
+    	return Result.success("获取成功",positionService.query());
     }
 
     @At
@@ -65,6 +65,8 @@ public class PositionController{
     @SLog(tag = "岗位", msg = "${args[0].id}")
     public Object addDo(@Param("..")Position position, HttpServletRequest req) {
 		try {
+		    if(positionService.fetch(Cnd.where("name","=",position.getName()))!=null)
+                return Result.error("岗位不能重名");
 			positionService.insert(position);
 			return Result.success("system.success");
 		} catch (Exception e) {

@@ -20,4 +20,15 @@ public class Position {
     @ColDefine(type = ColType.VARCHAR, width = 32)
     private String roleId;
 
+    public String getName() {
+        return name;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getRoleId() {
+        return roleId;
+    }
 }

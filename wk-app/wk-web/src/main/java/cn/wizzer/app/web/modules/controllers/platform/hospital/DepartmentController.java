@@ -38,7 +38,7 @@ public class DepartmentController{
     @Ok("json:full")
     @RequiresAuthentication
     public Object data(@Param("length") int length, @Param("start") int start, @Param("draw") int draw, @Param("::order") List<DataTableOrder> order, @Param("::columns") List<DataTableColumn> columns) {
-    	return departmentService.data(length, start, draw, order, columns, Cnd.where("delFlag","=",0), null);
+    	return Result.success("获取成功",departmentService.query(Cnd.where("delFlag","=",0)));
     }
     @At
     @Ok("json:full")
@@ -61,6 +61,8 @@ public class DepartmentController{
     @SLog(tag = "科室", msg = "${args[0].id}")
     public Object addDo(@Param("..")Department department, HttpServletRequest req) {
 		try {
+            if(departmentService.fetch(Cnd.where("name","=",department.getName()))!=null)
+                return Result.error("科室不能重名");
 			departmentService.insert(department);
 			return Result.success("system.success");
 		} catch (Exception e) {

@@ -38,7 +38,7 @@ public class TypeController{
     @Ok("json:full")
     @RequiresAuthentication
     public Object data(@Param("length") int length, @Param("start") int start, @Param("draw") int draw, @Param("::order") List<DataTableOrder> order, @Param("::columns") List<DataTableColumn> columns,@Param("isBottle")boolean isBottle) {
-    	return typeService.data(length, start, draw, order, columns, Cnd.where("isBottle","=",isBottle?1:0), null);
+    	return  Result.success("获取成功",typeService.query(Cnd.where("isBottle","=",isBottle?1:0)));
     }
 
     @At("/add")

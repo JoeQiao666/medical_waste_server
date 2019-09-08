@@ -1,5 +1,9 @@
 package cn.wizzer.app.web.modules.controllers.platform.sys;
 
+import cn.wizzer.app.hospital.modules.models.Department;
+import cn.wizzer.app.hospital.modules.models.Position;
+import cn.wizzer.app.hospital.modules.services.DepartmentService;
+import cn.wizzer.app.hospital.modules.services.PositionService;
 import cn.wizzer.app.sys.modules.models.Sys_menu;
 import cn.wizzer.app.sys.modules.models.Sys_role;
 import cn.wizzer.app.sys.modules.models.Sys_unit;
@@ -55,6 +59,10 @@ public class SysUserController {
     private SysUnitService unitService;
     @Inject
     private SysRoleService roleService;
+    @Inject
+    private DepartmentService departmentService;
+    @Inject
+    private PositionService positionService;
 
     @Inject
     private ShiroUtil shiroUtil;
@@ -70,16 +78,17 @@ public class SysUserController {
     @Ok("json:full")
     @GET
     @RequiresAuthentication
-    public Object listPage(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize, @Param("username") String name,@Param("positionName")String positionName) {
-        StringBuilder stringBuilder=new StringBuilder();
+    public Object listPage(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize, @Param("username") String name, @Param("positionName") String positionName) {
+        StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("select * from user_with_other");
-        if(name!= null&&name.length()>0)
+        if (name != null && name.length() > 0)
             stringBuilder.append(" where username like '%").append(name).append("%'");
-        if(positionName!=null&&positionName.length()>0)
-        {if(name!= null&&name.length()>0)
-            stringBuilder.append(" and positionName like '%").append(positionName).append("%'");
-            else stringBuilder.append(" where positionName like '%").append(positionName).append("%'");}
-        return userService.listPage2(pageNumber,pageSize, Sqls.create(stringBuilder.toString()));
+        if (positionName != null && positionName.length() > 0) {
+            if (name != null && name.length() > 0)
+                stringBuilder.append(" and positionName like '%").append(positionName).append("%'");
+            else stringBuilder.append(" where positionName like '%").append(positionName).append("%'");
+        }
+        return userService.listPage2(pageNumber, pageSize, Sqls.create(stringBuilder.toString()));
     }
 
     @At
@@ -92,7 +101,7 @@ public class SysUserController {
     @At
     @Ok("json")
     @RequiresAuthentication
-    @AdaptBy(type= JsonAdaptor.class)
+    @AdaptBy(type = JsonAdaptor.class)
     @SLog(tag = "新建用户", msg = "用户名:${args[0].loginname}")
     public Object addDo(@Param("..") Sys_user user, HttpServletRequest req) {
         try {
@@ -105,7 +114,8 @@ public class SysUserController {
             user.setLoginCount(0);
             user.setLoginAt(0);
             user = userService.insert(user);
-            if(user.getRoleId()!=null) roleService.insert("sys_user_role", Chain.make("roleId", user.getRoleId()).add("userId",user.getId()));
+            if (user.getRoleId() != null)
+                roleService.insert("sys_user_role", Chain.make("roleId", user.getRoleId()).add("userId", user.getId()));
             return Result.success("system.success");
         } catch (Exception e) {
             return Result.error("system.error");
@@ -115,20 +125,33 @@ public class SysUserController {
     @At
     @Ok("json")
     @RequiresAuthentication
-    @AdaptBy(type= JsonAdaptor.class)
+    @AdaptBy(type = JsonAdaptor.class)
     public Object batch(@Param("..") List<Sys_user> users, HttpServletRequest req) {
         try {
-            for (Sys_user user:users)
-            {RandomNumberGenerator rng = new SecureRandomNumberGenerator();
-            String salt = rng.nextBytes().toBase64();
-            String hashedPasswordBase64 = new Sha256Hash(user.getPassword(), salt, 1024).toBase64();
-            user.setSalt(salt);
-            user.setPassword(hashedPasswordBase64);
-            user.setLoginPjax(true);
-            user.setLoginCount(0);
-            user.setLoginAt(0);
-            user = userService.insert(user);
-            if(user.getRoleId()!=null) roleService.insert("sys_user_role", Chain.make("roleId", user.getRoleId()).add("userId",user.getId()));}
+            for (Sys_user user : users) {
+                RandomNumberGenerator rng = new SecureRandomNumberGenerator();
+                String salt = rng.nextBytes().toBase64();
+                String hashedPasswordBase64 = new Sha256Hash(user.getPassword(), salt, 1024).toBase64();
+                user.setSalt(salt);
+                user.setPassword(hashedPasswordBase64);
+                user.setLoginPjax(true);
+                user.setLoginCount(0);
+                user.setLoginAt(0);
+                if (user.getDepartmentName() != null) {
+                    Department department = departmentService.fetch(Cnd.where("name", "=", user.getDepartmentName()));
+                    if (department != null)
+                        user.setDepartmentId(department.getId());
+                }
+                if (user.getPositionName() != null) {
+                    Position position = positionService.fetch(Cnd.where("name", "=", user.getPositionName()));
+                    if (position != null) {
+                        user.setPositionId(position.getId());
+                        user.setRoleId(position.getRoleId());
+                    }
+                }
+                user = userService.insert(user);
+                if(user.getRoleId()!=null) roleService.insert("sys_user_role", Chain.make("roleId", user.getRoleId()).add("userId",user.getId()));
+            }
             return Result.success("system.success");
         } catch (Exception e) {
             return Result.error("system.error");
@@ -146,7 +169,7 @@ public class SysUserController {
     @Ok("json")
     @PUT
     @RequiresAuthentication
-    @AdaptBy(type= JsonAdaptor.class)
+    @AdaptBy(type = JsonAdaptor.class)
     @SLog(tag = "修改用户", msg = "用户名:${args[1]}->${args[0].loginname}")
     public Object editDo(@Param("..") Sys_user user, HttpServletRequest req) {
         try {
@@ -154,16 +177,16 @@ public class SysUserController {
             user.setLoginname(u.getLoginname());
             user.setOpBy(StringUtil.getUid());
             user.setOpAt((int) (System.currentTimeMillis() / 1000));
-            roleService.clear("sys_user_role",Cnd.where("userId","=",user.getId()));
-            if(user.getRoleId()!=null) roleService.insert("sys_user_role", Chain.make("roleId", user.getRoleId()).add("userId", user.getId()));
+            roleService.clear("sys_user_role", Cnd.where("userId", "=", user.getId()));
+            if (user.getRoleId() != null)
+                roleService.insert("sys_user_role", Chain.make("roleId", user.getRoleId()).add("userId", user.getId()));
             RandomNumberGenerator rng = new SecureRandomNumberGenerator();
             String salt = rng.nextBytes().toBase64();
-            String password=user.getPassword();
-            if(password!=null&&password.length()>0)
-            {
+            String password = user.getPassword();
+            if (password != null && password.length() > 0) {
                 user.setPassword(new Sha256Hash(password, salt, 1024).toBase64());
                 user.setSalt(salt);
-            }else user.setPassword(u.getPassword());
+            } else user.setPassword(u.getPassword());
             userService.updateIgnoreNull(user);
             return Result.success("system.success");
         } catch (Exception e) {
@@ -318,8 +341,8 @@ public class SysUserController {
     @At
     @Ok("json")
     @RequiresAuthentication
-    public Object data(@Param("roleId")String roleId,@Param("departmentId")String departmentId){
-        Sql sql=Sqls.create("select * from user_with_other where roleId ='" + roleId+"'"+(departmentId==null?"":(" and departmentId="+departmentId))).setCallback(Sqls.callback.maps());
+    public Object data(@Param("roleId") String roleId, @Param("departmentId") String departmentId) {
+        Sql sql = Sqls.create("select * from user_with_other where roleId ='" + roleId + "'" + (departmentId == null ? "" : (" and departmentId=" + departmentId))).setCallback(Sqls.callback.maps());
         userService.dao().execute(sql);
         return sql.getList(NutMap.class);
     }

@@ -1,5 +1,6 @@
 package cn.wizzer.app.sys.modules.models;
 
+import cn.wizzer.app.hospital.modules.models.Department;
 import cn.wizzer.framework.base.model.BaseModel;
 import org.nutz.dao.entity.annotation.*;
 
@@ -138,6 +139,10 @@ public class Sys_user extends BaseModel implements Serializable {
     private List<Sys_menu> customMenus;
 
     private String roleId;
+
+    private String departmentName;
+
+    private String positionName;
 
     public String getId() {
         return id;
@@ -354,4 +359,21 @@ public class Sys_user extends BaseModel implements Serializable {
     public String getPermission() {
         return permission;
     }
+
+    public String getDepartmentName() {
+        return departmentName;
+    }
+
+    public String getPositionName() {
+        return positionName;
+    }
+
+    public void setDepartmentId(String departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public void setPositionId(String positionId) {
+        this.positionId = positionId;
+    }
+
 }

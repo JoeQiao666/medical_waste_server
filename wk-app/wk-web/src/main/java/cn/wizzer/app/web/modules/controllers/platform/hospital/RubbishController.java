@@ -26,6 +26,7 @@ import org.nutz.ioc.loader.annotation.Inject;
 import org.nutz.ioc.loader.annotation.IocBean;
 import org.nutz.lang.Lang;
 import org.nutz.lang.Strings;
+import org.nutz.lang.random.R;
 import org.nutz.lang.util.NutMap;
 import org.nutz.log.Log;
 import org.nutz.log.Logs;
@@ -474,6 +475,7 @@ public class RubbishController {
     @SLog(tag = "垃圾", msg = "${args[0].id}")
     public Object addDo(@Param("..") Rubbish rubbish, HttpServletRequest req) {
         try {
+            rubbish.setId(R.UU32().toLowerCase());
             rubbishService.insert(rubbish);
             return Result.success("system.success");
         } catch (Exception e) {

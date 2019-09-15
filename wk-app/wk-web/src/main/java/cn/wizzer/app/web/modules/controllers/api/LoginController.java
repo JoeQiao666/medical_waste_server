@@ -92,12 +92,12 @@ public class LoginController {
         for (Rubbish rubbish : rubbishes) {
             String staffId = rubbish.getStaffId();
             Sys_user user;
-            if(staffId==null)continue;
+            if (staffId == null) continue;
             if (staffId.length() == 8) {
                 user = userService.fetch(Cnd.where("cardId", "=", staffId));
                 rubbish.setStaffId(user.getId());
             } else user = userService.fetch(staffId);
-            if(user==null)continue;
+            if (user == null) continue;
             if (rubbish.getDepartmentId().equals(user.getDepartmentId())) {
                 rubbish.setStatus(0);
                 rubbish.setOperatorId(null);
@@ -110,7 +110,7 @@ public class LoginController {
                 i++;
             }
         }
-        if(i==0)return Result.error(i+"确认人科室不正确");
+        if (i == 0) return Result.error(i + "确认人科室不正确");
         return Result.success(i + "件上传");
 
     }
@@ -133,7 +133,7 @@ public class LoginController {
                 stringBuilder.append(stringBuilder.toString().contains("where") ? " and" : " where");
                 stringBuilder.append(" opAt between UNIX_TIMESTAMP('").append(start).append("') and UNIX_TIMESTAMP(DATE_ADD('").append(end).append("',interval 1 day))");
             }
-        if (departmentId != null) {
+        if (departmentId != null && departmentId.length() != 0) {
             stringBuilder.append(stringBuilder.toString().contains("where") ? " and" : " where");
             stringBuilder.append(" departmentId='").append(departmentId).append("'");
         }
@@ -192,7 +192,7 @@ public class LoginController {
                         .setNotification(Notification.android("您的医疗废品已超过" + alert.getPercent() + "%未处理，请及时处理", "异常信息", null))
                         .build());
             }
-            if(i==0)return Result.error(i+"件入库");
+            if (i == 0) return Result.error(i + "件入库");
             return Result.success(i + "件入库");
         } catch (Exception e) {
             if (e instanceof APIRequestException)
@@ -214,19 +214,20 @@ public class LoginController {
                 if (companyId == null) continue;
                 if (companyId.length() == 8) {
                     Company company = companyService.fetch(Cnd.where("cardNumber", "=", companyId));
-                    if(company==null)continue;
+                    if (company == null) continue;
                     rubbish.setCompanyId(company.getId());
                 } else {
                     Company company = companyService.fetch(companyId);
-                    if(company==null)continue;
-                    rubbish.setCompanyId(companyId);}
+                    if (company == null) continue;
+                    rubbish.setCompanyId(companyId);
+                }
                 rubbish.setStatus(2);
                 rubbish.setRecycleAt((int) (System.currentTimeMillis() / 1000));
                 rubbishService.update(rubbish);
                 i++;
             }
         }
-        if(i==0)return Result.error(i+"件出库");
+        if (i == 0) return Result.error(i + "件出库");
         return Result.success(i + "件出库");
     }
 

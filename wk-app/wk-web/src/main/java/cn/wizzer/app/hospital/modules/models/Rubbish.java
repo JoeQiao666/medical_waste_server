@@ -12,7 +12,6 @@ public class Rubbish extends BaseModel implements Serializable {
     @Name
     @Comment("ID")
     @ColDefine(type = ColType.VARCHAR, width = 32)
-    @Prev(els = {@EL("uuid()")})
     private String id;
 
     @Column
@@ -141,5 +140,9 @@ public class Rubbish extends BaseModel implements Serializable {
 
     public void setCompanyId(String companyId) {
         this.companyId = companyId;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }

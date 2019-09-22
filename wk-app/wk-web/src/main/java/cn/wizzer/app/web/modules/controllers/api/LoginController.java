@@ -12,6 +12,7 @@ import cn.wizzer.app.hospital.modules.models.Alert;
 import cn.wizzer.app.hospital.modules.models.Company;
 import cn.wizzer.app.hospital.modules.models.Rubbish;
 import cn.wizzer.app.hospital.modules.services.*;
+import cn.wizzer.app.sys.modules.models.Sys_role;
 import cn.wizzer.app.sys.modules.models.Sys_user;
 import cn.wizzer.app.sys.modules.services.SysApiService;
 import cn.wizzer.app.sys.modules.services.SysUserService;
@@ -89,15 +90,30 @@ public class LoginController {
     @AdaptBy(type = JsonAdaptor.class)
     public Object addRubbish(@Param("..") List<Rubbish> rubbishes, HttpServletRequest req) {
         int i = 0;
+        String error = "0件上传";
         for (Rubbish rubbish : rubbishes) {
             String staffId = rubbish.getStaffId();
-            Sys_user user;
-            if (staffId == null) continue;
-            if (staffId.length() == 8) {
-                user = userService.fetch(Cnd.where("cardId", "=", staffId));
-                rubbish.setStaffId(user.getId());
-            } else user = userService.fetch(staffId);
-            if (user == null) continue;
+            if (staffId == null) {
+                error = "确认人不正确";
+                break;
+            }
+            Sys_user user = userService.fetch(Cnd.where(staffId.length() == 8 ? "cardId" : "id", "=", staffId));
+            if (user == null) {
+                error = "确认人不正确";
+                break;
+            }
+            boolean isStaff = false;
+            userService.fetchLinks(user, "roles");
+            for (Sys_role role : user.getRoles()) {
+                if (role.getCode().equals("staff")) {
+                    isStaff = true;
+                    break;
+                }
+            }
+            if (!isStaff) {
+                error = "确认人不正确";
+                break;
+            }
             if (rubbish.getDepartmentId().equals(user.getDepartmentId())) {
                 rubbish.setStatus(0);
                 rubbish.setOperatorId(null);
@@ -106,11 +122,15 @@ public class LoginController {
                 rubbish.setStoreAt(null);
                 rubbish.setRecycleAt(null);
                 rubbish.setDelFlag(false);
+                rubbish.setStaffId(user.getId());
                 rubbishService.insert(rubbish);
                 i++;
+            } else {
+                error = "确认人科室不正确";
+                break;
             }
         }
-        if (i == 0) return Result.error(i + "确认人科室不正确");
+        if (i == 0) return Result.error(error);
         return Result.success(i + "件上传");
 
     }
@@ -138,7 +158,7 @@ public class LoginController {
             stringBuilder.append(" departmentId='").append(departmentId).append("'");
         }
         stringBuilder.append(stringBuilder.toString().contains("where") ? " and" : " where");
-        stringBuilder.append(" recyclerId='").append(Strings.sNull(req.getAttribute("userId"))).append("'");
+        stringBuilder.append(" recyclerId='").append(Strings.sNull(req.getAttribute("userId"))).append("'").append(" order by opAt desc");
         Sql sql = Sqls.create(stringBuilder.toString()).setCallback(Sqls.callback.maps());
         pager.setRecordCount((int) Daos.queryCount(rubbishService.dao(), sql));// 记录数需手动设置
         sql.setPager(pager);
@@ -163,18 +183,38 @@ public class LoginController {
     @Filters(@By(type = TokenFilter.class))
     public Object store(@Param("ids") String[] ids, @Param("administratorId") String administratorId, HttpServletRequest req) {
         int i = 0;
+        String error = "0件入库";
         for (String id : ids) {
             Rubbish rubbish = rubbishService.fetch(id);
             if (rubbish != null) {
-                if (!rubbish.getRecyclerId().equals(Strings.sNull(req.getAttribute("userId")))) continue;
-                if (administratorId == null) continue;
+                if (!rubbish.getRecyclerId().equals(Strings.sNull(req.getAttribute("userId")))) {
+                    error = "操作人不正确";
+                    break;
+                }
+                if (administratorId == null) {
+                    error = "确认人不正确";
+                    break;
+                }
                 rubbish.setStatus(1);
                 rubbish.setStoreAt((int) (System.currentTimeMillis() / 1000));
-                if (administratorId.length() == 8) {
-                    Sys_user user = userService.fetch(Cnd.where("cardId", "=", administratorId));
-                    rubbish.setAdministratorId(user.getId());
-                } else
-                    rubbish.setAdministratorId(administratorId);
+                Sys_user user = userService.fetch(Cnd.where(administratorId.length() == 8 ? "cardId" : "id", "=", administratorId));
+                if (user == null) {
+                    error = "确认人不正确";
+                    break;
+                }
+                userService.fetchLinks(user, "roles");
+                boolean isAdministrator = false;
+                for (Sys_role role : user.getRoles()) {
+                    if (role.getCode().equals("administrator")) {
+                        isAdministrator = true;
+                        break;
+                    }
+                }
+                if (!isAdministrator) {
+                    error = "确认人不正确";
+                    break;
+                }
+                rubbish.setAdministratorId(user.getId());
                 rubbishService.update(rubbish);
                 i++;
             }
@@ -192,7 +232,7 @@ public class LoginController {
                         .setNotification(Notification.android("您的医疗废品已超过" + alert.getPercent() + "%未处理，请及时处理", "异常信息", null))
                         .build());
             }
-            if (i == 0) return Result.error(i + "件入库");
+            if (i == 0) return Result.error(error);
             return Result.success(i + "件入库");
         } catch (Exception e) {
             if (e instanceof APIRequestException)
@@ -207,18 +247,31 @@ public class LoginController {
     @Filters(@By(type = TokenFilter.class))
     public Object recycle(@Param("ids") String[] ids, @Param("companyId") String companyId, HttpServletRequest req) {
         int i = 0;
+        String error = "0件出库";
         for (String id : ids) {
             Rubbish rubbish = rubbishService.fetch(id);
             if (rubbish != null) {
-                if (!rubbish.getRecyclerId().equals(Strings.sNull(req.getAttribute("userId")))) continue;
-                if (companyId == null) continue;
+                if (!rubbish.getRecyclerId().equals(Strings.sNull(req.getAttribute("userId")))) {
+                    error = "操作人不正确";
+                    break;
+                }
+                if (companyId == null) {
+                    error = "确认人不正确";
+                    break;
+                }
                 if (companyId.length() == 8) {
                     Company company = companyService.fetch(Cnd.where("cardNumber", "=", companyId));
-                    if (company == null) continue;
+                    if (company == null) {
+                        error = "确认人不正确";
+                        break;
+                    }
                     rubbish.setCompanyId(company.getId());
                 } else {
                     Company company = companyService.fetch(companyId);
-                    if (company == null) continue;
+                    if (company == null) {
+                        error = "确认人不正确";
+                        break;
+                    }
                     rubbish.setCompanyId(companyId);
                 }
                 rubbish.setStatus(2);
@@ -227,7 +280,7 @@ public class LoginController {
                 i++;
             }
         }
-        if (i == 0) return Result.error(i + "件出库");
+        if (i == 0) return Result.error(error);
         return Result.success(i + "件出库");
     }
 
@@ -236,7 +289,7 @@ public class LoginController {
     @GET
     @Filters(@By(type = TokenFilter.class))
     public Object getCompanies(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize, @Param("name") String name) {
-        return Result.success("获取成功", companyService.listPage(pageNumber, pageSize, Cnd.where("name", "like", "%" + (name != null ? name : "") + "%")));
+        return Result.success("获取成功", companyService.listPage(pageNumber, pageSize, Cnd.where("name", "like", "%" + (name != null ? name : "") + "%").orderBy("opAt", "desc")));
     }
 
     @At

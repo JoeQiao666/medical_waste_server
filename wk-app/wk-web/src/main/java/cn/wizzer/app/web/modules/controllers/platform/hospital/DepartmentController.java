@@ -45,7 +45,7 @@ public class DepartmentController{
     @GET
     @RequiresAuthentication
     public Object listPage(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize,@Param("name")String name){
-        return departmentService.listPage(pageNumber,pageSize, Cnd.where("name","like","%"+(name!=null?name:"")+"%").and("delFlag","=",0));
+        return departmentService.listPage(pageNumber,pageSize, Cnd.where("name","like","%"+(name!=null?name:"")+"%").and("delFlag","=",0).orderBy("opAt","desc"));
     }
     @At("/add")
     @Ok("beetl:/platform/hospital/department/add.html")

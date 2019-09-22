@@ -88,6 +88,7 @@ public class SysUserController {
                 stringBuilder.append(" and positionName like '%").append(positionName).append("%'");
             else stringBuilder.append(" where positionName like '%").append(positionName).append("%'");
         }
+        stringBuilder.append(" order by opAt desc");
         return userService.listPage2(pageNumber, pageSize, Sqls.create(stringBuilder.toString()));
     }
 

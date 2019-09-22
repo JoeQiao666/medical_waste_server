@@ -39,6 +39,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -97,7 +99,7 @@ public class RubbishController {
     @GET
     @RequiresAuthentication
     public Object listPageToday(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize, @Param("isBottle") boolean isBottle) {
-        return rubbishService.listPage2(pageNumber,pageSize,Sqls.create("select * from rubbish_with_name_today where isBottle="+(isBottle?1:0)));
+        return rubbishService.listPage2(pageNumber,pageSize,Sqls.create("select * from rubbish_with_name_today where isBottle="+(isBottle?1:0)+ " order by opAt desc"));
     }
 
     @At
@@ -368,10 +370,12 @@ public class RubbishController {
             case "2":name="出库列表";
             break;
         }
-        try (OutputStream fileOut = new FileOutputStream("/excel/"+name+".xlsx")) {
+        SimpleDateFormat simpleDateFormat=new SimpleDateFormat("yyyy-MM-dd");
+        String date=simpleDateFormat.format(new Date());
+        try (OutputStream fileOut = new FileOutputStream("/excel/"+name+date+".xlsx")) {
             wb.write(fileOut);
         }
-        return new File("/excel/"+name+".xlsx");
+        return new File("/excel/"+name+date+".xlsx");
     }
 
     @At
@@ -383,6 +387,9 @@ public class RubbishController {
         stringBuilder = new StringBuilder();
         String format;
         Pattern p ;
+        String at;
+        String time;
+        String suffix="";
         switch(type){
             case "day":
                 format="%Y-%m-%d";
@@ -391,19 +398,32 @@ public class RubbishController {
             case "month":
                 format="%Y-%m";
                 p=Pattern.compile("^\\d{4}\\-\\d{1,2}$");
+                suffix="-01";
                 break;
             case "year":
                 format="%Y";
                 p=Pattern.compile("^\\d{4}$");
+                suffix="-01-01";
                 break;
             default:return Result.error("筛选类型错误");
         }
-        stringBuilder.append("SELECT\n" + "\t`rubbish_by_type`.`storeTime` AS `storeTime`,\n" + "\t`rubbish_by_type`.`isBottle` AS `isBottle`,\n" + "\tcast(\n" + "\t\tsum(`rubbish_by_type`.`total`) AS DECIMAL (10, 2)\n" + "\t) AS `total`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`typeName` SEPARATOR ','\n" + "\t) AS `typeNames`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`total` SEPARATOR ','\n" + "\t) AS `totals`\n" + "FROM\n" + "\t(\n" + "\t\tSELECT\n" + "\t\t\tcast(\n" + "\t\t\t\tsum(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`weight`\n" + "\t\t\t\t) AS DECIMAL (10, 2)\n" + "\t\t\t) AS `total`,\n" + "\t\t\t`nutzwk`.`rubbish`.`isBottle` AS `isBottle`,\n" + "\t\t\t`nutzwk`.`rubbish`.`typeId` AS `typeId`,\n" + "\t\t\tdate_format(\n" + "\t\t\t\tfrom_unixtime(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`storeAt`\n" + "\t\t\t\t),\n" + "\t\t\t\t'").append(format).append("'\n").append("\t\t\t) AS `storeTime`,\n").append("\t\t\t`nutzwk`.`type`.`name` AS `typeName`\n").append("\t\tFROM\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`\n").append("\t\t\t\tLEFT JOIN `nutzwk`.`type` ON (\n").append("\t\t\t\t\t(\n").append("\t\t\t\t\t\t`nutzwk`.`type`.`id` = `nutzwk`.`rubbish`.`typeId`\n").append("\t\t\t\t\t)\n").append("\t\t\t\t)\n").append("\t\t\t)\n").append("\t\tWHERE\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`.`status` = \n").append(status).append("\t\t\t)\n");
+        switch(status){
+            case 1:
+                at="storeAt";
+                time="storeTime";
+                break;
+            case 2:
+                at="recycleAt";
+                time="recycleTime";
+                break;
+            default:return Result.error("状态错误");
+        }
+        stringBuilder.append("SELECT\n" + "\t`rubbish_by_type`.`storeTime` AS `storeTime`,\n"+ "\t`rubbish_by_type`.`recycleTime` AS `recycleTime`,\n" + "\t`rubbish_by_type`.`isBottle` AS `isBottle`,\n" + "\tcast(\n" + "\t\tsum(`rubbish_by_type`.`total`) AS DECIMAL (10, 2)\n" + "\t) AS `total`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`typeName` SEPARATOR ','\n" + "\t) AS `typeNames`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`total` SEPARATOR ','\n" + "\t) AS `totals`\n" + "FROM\n" + "\t(\n" + "\t\tSELECT\n" + "\t\t\tcast(\n" + "\t\t\t\tsum(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`weight`\n" + "\t\t\t\t) AS DECIMAL (10, 2)\n" + "\t\t\t) AS `total`,\n" + "\t\t\t`nutzwk`.`rubbish`.`isBottle` AS `isBottle`,\n" + "\t\t\t`nutzwk`.`rubbish`.`typeId` AS `typeId`,\n" + "\t\t\tdate_format(\n" + "\t\t\t\tfrom_unixtime(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`storeAt`\n" + "\t\t\t\t),\n" + "\t\t\t\t'").append(format).append("'\n").append("\t\t\t) AS `storeTime`,\n").append("date_format(from_unixtime(`nutzwk`.`rubbish`.`recycleAt`),'").append(format).append("') AS recycleTime,").append("\t\t\t`nutzwk`.`type`.`name` AS `typeName`\n").append("\t\tFROM\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`\n").append("\t\t\t\tLEFT JOIN `nutzwk`.`type` ON (\n").append("\t\t\t\t\t(\n").append("\t\t\t\t\t\t`nutzwk`.`type`.`id` = `nutzwk`.`rubbish`.`typeId`\n").append("\t\t\t\t\t)\n").append("\t\t\t\t)\n").append("\t\t\t)\n").append("\t\tWHERE\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`.`status`\n").append(status==1?"!=0":("="+status)).append("\t\t\t)\n");
         if( p.matcher(start).matches()&&p.matcher(end).matches())
-            stringBuilder.append(" and nutzwk.rubbish.storeAt between UNIX_TIMESTAMP('").append(start).append("') and UNIX_TIMESTAMP(DATE_ADD('").append(end).append("',interval 1 day))");
+            stringBuilder.append(" and nutzwk.rubbish." + at + " between UNIX_TIMESTAMP('").append(start).append(suffix).append("')and UNIX_TIMESTAMP(DATE_ADD('").append(end).append(suffix).append("',interval 1 ").append(type).append("))");
         else return Result.error("日期不正确");
         stringBuilder.append(" and nutzwk.rubbish.isBottle=").append(isBottle ? 1 : 0);
-        stringBuilder.append("\t\tGROUP BY from_unixtime(`nutzwk`.`rubbish`.`storeAt`,'").append(format).append("'\n").append("\t\t\t),\n").append("\t\t\t`nutzwk`.`rubbish`.`typeId`\n").append("\t) `rubbish_by_type`\n").append("GROUP BY\n").append("\t`rubbish_by_type`.`storeTime`");
+        stringBuilder.append("\t\tGROUP BY from_unixtime(`nutzwk`.`rubbish`.`").append(at).append("`,'").append(format).append("'\n").append("\t\t\t),\n").append("\t\t\t`nutzwk`.`rubbish`.`typeId`\n").append("\t) `rubbish_by_type`\n").append("GROUP BY\n").append("\t`rubbish_by_type`.`").append(time).append("`");
         Sql sql=Sqls.create(stringBuilder.toString()).setCallback(Sqls.callback.maps());
         rubbishService.dao().execute(sql);
         return rubbishService.listPage2(pageNumber,pageSize,sql);
@@ -417,6 +437,7 @@ public class RubbishController {
         String format;
         Pattern p ;
         String value;
+        String order;
         switch(type){
             case "day":
                 format="%Y-%m-%d";
@@ -435,15 +456,17 @@ public class RubbishController {
         switch(status){
             case 1:
                 value="rubbish_with_name.storeAt";
+                order="storeAt";
                 break;
                 case 2:
                     value="rubbish_with_name.recycleAt";
+                    order="recycleAt";
                     break;
                     default:return Result.error("状态错误");
         }
         if(! p.matcher(date).matches())
             return Result.error("日期不正确");
-        Sql sql=Sqls.create("select * from rubbish_with_name where isBottle="+(isBottle?1:0)+" and from_unixtime("+value+",'"+format+"')='"+date+"'");
+        Sql sql=Sqls.create("select * from rubbish_with_name where isBottle="+(isBottle?1:0)+" and from_unixtime("+value+",'"+format+"')='"+date+"' and status"+(status==1?"!=0":("="+status))+" order by "+order+" desc");
         return rubbishService.listPage2(pageNumber,pageSize,sql);
     }
 

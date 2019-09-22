@@ -52,7 +52,7 @@ public class RecordController{
     @GET
     @RequiresAuthentication
     public Object listPage(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize){
-        return recordService.listPage2(pageNumber,pageSize, Sqls.create("select record.*,sys_user.username from record left join sys_user on sys_user.id=record.operatorId").setCallback(Sqls.callback.maps()));
+        return recordService.listPage2(pageNumber,pageSize, Sqls.create("select record.*,sys_user.username from record left join sys_user on sys_user.id=record.operatorId order by opAt desc").setCallback(Sqls.callback.maps()));
     }
 
     @At

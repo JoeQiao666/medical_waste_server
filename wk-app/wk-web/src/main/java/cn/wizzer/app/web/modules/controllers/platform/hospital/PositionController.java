@@ -48,7 +48,7 @@ public class PositionController{
     @GET
     @RequiresAuthentication
     public Object listPage(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize, @Param("name") String name) {
-        return positionService.listPage2(pageNumber,pageSize,Sqls.create("select sys_position.*,sys_role.name as roleName from sys_position left join  sys_role on sys_position.roleId=sys_role.id where sys_position.name like '%"+(name==null?"":name)+"%'").setCallback(Sqls.callback.maps()));
+        return positionService.listPage2(pageNumber,pageSize,Sqls.create("select sys_position.*,sys_role.name as roleName from sys_position left join  sys_role on sys_position.roleId=sys_role.id where sys_position.name like '%"+(name==null?"":name)+"%' order by opAt desc").setCallback(Sqls.callback.maps()));
     }
 
     @At("/add")

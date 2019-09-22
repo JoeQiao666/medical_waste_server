@@ -46,7 +46,7 @@ public class CompanyController{
     @GET
     @RequiresAuthentication
     public Object listPage(@Param("pageNumber") int pageNumber, @Param("pageSize") int pageSize,@Param("name")String name){
-        return companyService.listPage(pageNumber,pageSize, Cnd.where("name","like","%"+(name!=null?name:"")+"%"));
+        return companyService.listPage(pageNumber,pageSize, Cnd.where("name","like","%"+(name!=null?name:"")+"%").orderBy("opAt","desc"));
     }
     @At("/add")
     @Ok("beetl:/platform/hospital/company/add.html")

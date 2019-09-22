@@ -303,7 +303,7 @@ public class RubbishController {
                 "\t\t\t\tAND (\n" +
                 "\t\t\t\t\t`nutzwk`.`rubbish`.`isBottle` = "+(isBottle?1:0)+"\n" +
                 "\t\t\t\t)\n" +
-                (status!=null?"AND `nutzwk`.`rubbish`.`status` = "+status:"") +
+                (status!=null?"AND `nutzwk`.`rubbish`.`status` "+(status.equals("1")?"!=0":("="+status)):"") +
                 "\t\t\t)\n" +
                 "\t\tGROUP BY\n" +
                 "\t\t\t`nutzwk`.`rubbish`.`departmentId`,\n" +

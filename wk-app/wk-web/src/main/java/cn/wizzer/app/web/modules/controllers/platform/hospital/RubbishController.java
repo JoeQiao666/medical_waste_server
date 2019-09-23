@@ -151,7 +151,19 @@ public class RubbishController {
     @GET
     @RequiresAuthentication
     public Object weightPerMonthInLastYear(@Param("isBottle")boolean isBottle){
-        Sql sql=Sqls.create("select * from last_year_weight_per_month where isBottle="+(isBottle?1:0)).setCallback(Sqls.callback.maps());
+        Sql sql=Sqls.create("SELECT\n" +
+                "\tcast(\n" +
+                "\tsum( `rubbish`.`weight` ) AS DECIMAL ( 10, 2 )) AS `weight`,\n" +
+                "\tdate_format( from_unixtime( `rubbish`.`opAt` ), '%Y-%m' ) AS `date` \n" +
+                "FROM\n" +
+                "\t`rubbish` \n" +
+                "WHERE\n" +
+                "\t(( to_days( now()) - to_days( from_unixtime( `rubbish`.`opAt` ))) <= 365 AND isBottle = "+(isBottle?1:0)+" ) \n" +
+                "GROUP BY\n" +
+                "\tdate_format( from_unixtime( `rubbish`.`opAt` ), '%Y-%m' ),\n" +
+                "\t`rubbish`.`isBottle` \n" +
+                "ORDER BY\n" +
+                "\t`date` DESC").setCallback(Sqls.callback.maps());
         rubbishService.dao().execute(sql);
         return sql.getList(NutMap.class);
     }
@@ -418,12 +430,12 @@ public class RubbishController {
                 break;
             default:return Result.error("状态错误");
         }
-        stringBuilder.append("SELECT\n" + "\t`rubbish_by_type`.`storeTime` AS `storeTime`,\n"+ "\t`rubbish_by_type`.`recycleTime` AS `recycleTime`,\n" + "\t`rubbish_by_type`.`isBottle` AS `isBottle`,\n" + "\tcast(\n" + "\t\tsum(`rubbish_by_type`.`total`) AS DECIMAL (10, 2)\n" + "\t) AS `total`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`typeName` SEPARATOR ','\n" + "\t) AS `typeNames`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`total` SEPARATOR ','\n" + "\t) AS `totals`\n" + "FROM\n" + "\t(\n" + "\t\tSELECT\n" + "\t\t\tcast(\n" + "\t\t\t\tsum(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`weight`\n" + "\t\t\t\t) AS DECIMAL (10, 2)\n" + "\t\t\t) AS `total`,\n" + "\t\t\t`nutzwk`.`rubbish`.`isBottle` AS `isBottle`,\n" + "\t\t\t`nutzwk`.`rubbish`.`typeId` AS `typeId`,\n" + "\t\t\tdate_format(\n" + "\t\t\t\tfrom_unixtime(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`storeAt`\n" + "\t\t\t\t),\n" + "\t\t\t\t'").append(format).append("'\n").append("\t\t\t) AS `storeTime`,\n").append("date_format(from_unixtime(`nutzwk`.`rubbish`.`recycleAt`),'").append(format).append("') AS recycleTime,").append("\t\t\t`nutzwk`.`type`.`name` AS `typeName`\n").append("\t\tFROM\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`\n").append("\t\t\t\tLEFT JOIN `nutzwk`.`type` ON (\n").append("\t\t\t\t\t(\n").append("\t\t\t\t\t\t`nutzwk`.`type`.`id` = `nutzwk`.`rubbish`.`typeId`\n").append("\t\t\t\t\t)\n").append("\t\t\t\t)\n").append("\t\t\t)\n").append("\t\tWHERE\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`.`status`\n").append(status==1?"!=0":("="+status)).append("\t\t\t)\n");
+        stringBuilder.append("SELECT weight_per_type.* from(SELECT\n" + "\t`rubbish_by_type`.`storeTime` AS `storeTime`,\n"+ "\t`rubbish_by_type`.`recycleTime` AS `recycleTime`,\n" + "\t`rubbish_by_type`.`isBottle` AS `isBottle`,\n" + "\tcast(\n" + "\t\tsum(`rubbish_by_type`.`total`) AS DECIMAL (10, 2)\n" + "\t) AS `total`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`typeName` SEPARATOR ','\n" + "\t) AS `typeNames`,\n" + "\tgroup_concat(\n" + "\t\t`rubbish_by_type`.`total` SEPARATOR ','\n" + "\t) AS `totals`\n" + "FROM\n" + "\t(\n" + "\t\tSELECT\n" + "\t\t\tcast(\n" + "\t\t\t\tsum(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`weight`\n" + "\t\t\t\t) AS DECIMAL (10, 2)\n" + "\t\t\t) AS `total`,\n" + "\t\t\t`nutzwk`.`rubbish`.`isBottle` AS `isBottle`,\n" + "\t\t\t`nutzwk`.`rubbish`.`typeId` AS `typeId`,\n" + "\t\t\tdate_format(\n" + "\t\t\t\tfrom_unixtime(\n" + "\t\t\t\t\t`nutzwk`.`rubbish`.`storeAt`\n" + "\t\t\t\t),\n" + "\t\t\t\t'").append(format).append("'\n").append("\t\t\t) AS `storeTime`,\n").append("date_format(from_unixtime(`nutzwk`.`rubbish`.`recycleAt`),'").append(format).append("') AS recycleTime,").append("\t\t\t`nutzwk`.`type`.`name` AS `typeName`\n").append("\t\tFROM\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`\n").append("\t\t\t\tLEFT JOIN `nutzwk`.`type` ON (\n").append("\t\t\t\t\t(\n").append("\t\t\t\t\t\t`nutzwk`.`type`.`id` = `nutzwk`.`rubbish`.`typeId`\n").append("\t\t\t\t\t)\n").append("\t\t\t\t)\n").append("\t\t\t)\n").append("\t\tWHERE\n").append("\t\t\t(\n").append("\t\t\t\t`nutzwk`.`rubbish`.`status`\n").append(status==1?"!=0":("="+status)).append("\t\t\t)\n");
         if( p.matcher(start).matches()&&p.matcher(end).matches())
             stringBuilder.append(" and nutzwk.rubbish." + at + " between UNIX_TIMESTAMP('").append(start).append(suffix).append("')and UNIX_TIMESTAMP(DATE_ADD('").append(end).append(suffix).append("',interval 1 ").append(type).append("))");
         else return Result.error("日期不正确");
         stringBuilder.append(" and nutzwk.rubbish.isBottle=").append(isBottle ? 1 : 0);
-        stringBuilder.append("\t\tGROUP BY from_unixtime(`nutzwk`.`rubbish`.`").append(at).append("`,'").append(format).append("'\n").append("\t\t\t),\n").append("\t\t\t`nutzwk`.`rubbish`.`typeId`\n").append("\t) `rubbish_by_type`\n").append("GROUP BY\n").append("\t`rubbish_by_type`.`").append(time).append("`");
+        stringBuilder.append("\t\tGROUP BY from_unixtime(`nutzwk`.`rubbish`.`").append(at).append("`,'").append(format).append("'\n").append("\t\t\t),\n").append("\t\t\t`nutzwk`.`rubbish`.`typeId`\n").append("\t) `rubbish_by_type`\n").append("GROUP BY\n").append("\t`rubbish_by_type`.`").append(time).append("`) weight_per_type order by weight_per_type.").append(time).append(" desc");
         Sql sql=Sqls.create(stringBuilder.toString()).setCallback(Sqls.callback.maps());
         rubbishService.dao().execute(sql);
         return rubbishService.listPage2(pageNumber,pageSize,sql);
